@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Личный финансовый менеджер</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: #f0f2f5; color: #333; }
+  .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+  h1 { text-align: center; margin: 15px 0; color: #2c3e50; }
+  nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  nav button {
+    padding: 10px 20px; border: none; border-radius: 8px;
+    background: #dfe6e9; cursor: pointer; font-size: 15px;
+  }
+  nav button.active { background: #3498db; color: #fff; }
+  .card {
+    background: #fff; border-radius: 10px; padding: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 15px;
+  }
+  .stats { display: flex; gap: 15px; }
+  .stat { flex: 1; text-align: center; padding: 15px; border-radius: 10px; color: #fff; }
+  .stat.income  { background: #27ae60; }
+  .stat.expense { background: #e74c3c; }
+  .stat.balance { background: #2980b9; }
+  .stat .num { font-size: 24px; font-weight: bold; }
+  label { display: block; margin: 8px 0 3px; font-size: 14px; }
+  input, select {
+    width: 100%; padding: 8px; border: 1px solid #ccc;
+    border-radius: 6px; font-size: 14px;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 140px; }
+  .btn {
+    margin-top: 12px; padding: 10px 22px; border: none; border-radius: 8px;
+    background: #3498db; color: #fff; font-size: 15px; cursor: pointer;
+  }
+  .btn.green  { background: #27ae60; }
+  .btn.red    { background: #e74c3c; }
+  .btn.gray   { background: #95a5a6; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
+  th { background: #f8f9fa; }
+  .plus  { color: #27ae60; font-weight: bold; }
+  .minus { color: #e74c3c; font-weight: bold; }
+  .bar { height: 12px; background: #ecf0f1; border-radius: 6px; margin-top: 5px; }
+  .bar div { height: 100%; border-radius: 6px; }
+  .ok      { background: #27ae60; }
+  .warn    { background: #f39c12; }
+  .danger  { background: #e74c3c; }
+  .msg { margin-top: 10px; font-size: 14px; color: #c0392b; }
+  .hint { font-size: 13px; color: #7f8c8d; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Личный финансовый менеджер</h1>
+
+  <nav>
+    <button id="tab-review" class="active" onclick="showTab('review')">Обзор</button>
+    <button id="tab-ops"    onclick="showTab('ops')">Операции</button>
+    <button id="tab-budget" onclick="showTab('budget')">Бюджеты</button>
+    <button id="tab-report" onclick="showTab('report')">Отчёт</button>
+  </nav>
+
+  <!-- ОБЗОР -->
+  <div id="review" class="tab">
+    <div class="card">
+      <div class="stats">
+        <div class="stat income"><div>Доходы</div><div class="num" id="sum-income">0</div></div>
+        <div class="stat expense"><div>Расходы</div><div class="num" id="sum-expense">0</div></div>
+        <div class="stat balance"><div>Баланс</div><div class="num" id="sum-balance">0</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Последние операции</h3>
+      <table>
+        <thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+        <tbody id="last-ops"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ОПЕРАЦИИ -->
+  <div id="ops" class="tab" style="display:none">
+    <div class="card">
+      <h3>Новая операция</h3>
+      <div class="row">
+        <div>
+          <label>Тип</label>
+          <select id="op-type">
+            <option value="income">Доход</option>
+            <option value="expense">Расход</option>
+          </select>
+        </div>
+        <div>
+          <label>Категория</label>
+          <select id="op-category"></select>
+        </div>
+        <div>
+          <label>Сумма, руб.</label>
+          <input type="number" id="op-amount" step="0.01" min="0.01" placeholder="Например, 1500">
+        </div>
+        <div>
+          <label>Дата</label>
+          <input type="date" id="op-date">
+        </div>
+      </div>
+      <label>Комментарий</label>
+      <input type="text" id="op-comment" maxlength="100" placeholder="Необязательно">
+      <button class="btn green" onclick="addOperation()">Добавить операцию</button>
+      <div class="msg" id="ops-msg"></div>
+    </div>
+    <div class="card">
+      <h3>Все операции</h3>
+      <table>
+        <thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
+        <tbody id="all-ops"></tbody>
+      </table>
+      <div class="hint" id="empty-ops">Операций пока нет — добавьте первую выше.</div>
+    </div>
+  </div>
+
+  <!-- БЮДЖЕТЫ -->
+  <div id="budget" class="tab" style="display:none">
+    <div class="card">
+      <h3>Лимит расходов по категории</h3>
+      <div class="row">
+        <div>
+          <label>Категория расхода</label>
+          <select id="budget-category"></select>
+        </div>
+        <div>
+          <label>Лимит на месяц, руб.</label>
+          <input type="number" id="budget-limit" step="0.01" min="0.01" placeholder="Например, 10000">
+        </div>
+      </div>
+      <button class="btn" onclick="setBudget()">Сохранить лимит</button>
+      <div class="msg" id="budget-msg"></div>
+    </div>
+    <div class="card">
+      <h3>Использование бюджетов</h3>
+      <div id="budget-list"><div class="hint">Лимиты не заданы.</div></div>
+    </div>
+  </div>
+
+  <!-- ОТЧЁТ -->
+  <div id="report" class="tab" style="display:none">
+    <div class="card">
+      <h3>Структура расходов по категориям</h3>
+      <div id="report-list"></div>
+      <button class="btn gray" onclick="exportCSV()">Экспорт операций в CSV</button>
+      <div class="msg" id="report-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---------- МОДУЛЬ 1. ХРАНЕНИЕ ДАННЫХ (localStorage) ----------
+var STORAGE_KEY = "lfm_data_v1";
+
+function loadData() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      var data = JSON.parse(raw);
+      if (Array.isArray(data.operations) && typeof data.budgets === "object") return data;
+    }
+  } catch (e) {
+    console.error("Ошибка чтения данных: " + e.message);
+  }
+  return { operations: [], budgets: {} };
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("Ошибка сохранения данных: " + e.message);
+  }
+}
+
+var state = loadData();
+
+var EXPENSE_CATEGORIES = ["Продукты", "Транспорт", "Жильё", "Развлечения", "Здоровье", "Прочее"];
+var INCOME_CATEGORIES  = ["Зарплата", "Подработка", "Подарки", "Прочее"];
+
+// ---------- МОДУЛЬ 2. ОПЕРАЦИИ ----------
+function getCategories(type) {
+  return type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+}
+
+function fillCategorySelects() {
+  var opSel = document.getElementById("op-category");
+  opSel.innerHTML = "";
+  getCategories(document.getElementById("op-type").value).forEach(function (c) {
+    var o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    opSel.appendChild(o);
+  });
+  var bSel = document.getElementById("budget-category");
+  bSel.innerHTML = "";
+  EXPENSE_CATEGORIES.forEach(function (c) {
+    var o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    bSel.appendChild(o);
+  });
+}
+
+function addOperation() {
+  var msg = document.getElementById("ops-msg");
+  msg.textContent = "";
+  try {
+    var type = document.getElementById("op-type").value;
+    var category = document.getElementById("op-category").value;
+    var amountStr = document.getElementById("op-amount").value.replace(",", ".");
+    var date = document.getElementById("op-date").value;
+    var comment = document.getElementById("op-comment").value.trim();
+
+    var amount = parseFloat(amountStr);
+    if (!amount || amount <= 0) throw new Error("Введите корректную сумму — число больше нуля.");
+    if (!date) throw new Error("Выберите дату операции.");
+
+    state.operations.push({ type: type, category: category, amount: amount, date: date, comment: comment });
+    saveData();
+
+    document.getElementById("op-amount").value = "";
+    document.getElementById("op-comment").value = "";
+    renderAll();
+  } catch (e) {
+    msg.textContent = "Ошибка: " + e.message;
+  }
+}
+
+function deleteOperation(index) {
+  state.operations.splice(index, 1);
+  saveData();
+  renderAll();
+}
+
+function formatMoney(n) {
+  return n.toFixed(2).replace(".", ",") + " руб.";
+}
+
+// ---------- МОДУЛЬ 3. БЮДЖЕТЫ ----------
+function setBudget() {
+  var msg = document.getElementById("budget-msg");
+  msg.textContent = "";
+  try {
+    var category = document.getElementById("budget-category").value;
+    var limit = parseFloat(document.getElementById("budget-limit").value.replace(",", "."));
+    if (!limit || limit <= 0) throw new Error("Введите корректный лимит — число больше нуля.");
+    state.budgets[category] = limit;
+    saveData();
+    document.getElementById("budget-limit").value = "";
+    renderAll();
+  } catch (e) {
+    msg.textContent = "Ошибка: " + e.message;
+  }
+}
+
+function spentByCategory(category) {
+  var sum = 0;
+  state.operations.forEach(function (o) {
+    if (o.type === "expense" && o.category === category) sum += o.amount;
+  });
+  return sum;
+}
+
+// ---------- МОДУЛЬ 4. ОТЧЁТ И ЭКСПОРТ ----------
+function exportCSV() {
+  var msg = document.getElementById("report-msg");
+  msg.textContent = "";
+  try {
+    if (state.operations.length === 0) throw new Error("Нет операций для экспорта.");
+    var rows = [["Дата", "Тип", "Категория", "Сумма", "Комментарий"]];
+    state.operations.forEach(function (o) {
+      rows.push([o.date, o.type === "income" ? "Доход" : "Расход",
+                 o.category, o.amount.toFixed(2), o.comment.replace(/;/g, ",")]);
+    });
+    var csv = "\uFEFF" + rows.map(function (r) { return r.join(";"); }).join("\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "operations.csv";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (e) {
+    msg.textContent = "Ошибка: " + e.message;
+  }
+}
+
+// ---------- МОДУЛЬ 5. ОТРИСОВКА ИНТЕРФЕЙСА ----------
+function showTab(name) {
+  ["review", "ops", "budget", "report"].forEach(function (t) {
+    document.getElementById(t).style.display = (t === name) ? "block" : "none";
+    document.getElementById("tab-" + t).classList.toggle("active", t === name);
+  });
+}
+
+function operationRow(o, index, withDelete) {
+  var sign = o.type === "income" ? "+" : "−";
+  var cls  = o.type === "income" ? "plus" : "minus";
+  var del  = withDelete
+    ? "<td><button class='btn red' style='padding:4px 10px' onclick='deleteOperation(" + index + ")'>Удалить</button></td>"
+    : "<td></td>";
+  return "<tr><td>" + o.date + "</td><td>" + (o.type === "income" ? "Доход" : "Расход") +
+         "</td><td>" + o.category + "</td><td class='" + cls + "'>" + sign + " " +
+         formatMoney(o.amount) + "</td><td>" + o.comment + "</td>" + del + "</tr>";
+}
+
+function renderReview() {
+  var income = 0, expense = 0;
+  state.operations.forEach(function (o) {
+    if (o.type === "income") income += o.amount; else expense += o.amount;
+  });
+  document.getElementById("sum-income").textContent  = formatMoney(income);
+  document.getElementById("sum-expense").textContent = formatMoney(expense);
+  document.getElementById("sum-balance").textContent = formatMoney(income - expense);
+
+  var last = state.operations.slice(-5).reverse();
+  document.getElementById("last-ops").innerHTML =
+    last.map(function (o) { return operationRow(o, 0, false); }).join("") ||
+    "<tr><td colspan='5' class='hint'>Операций пока нет.</td></tr>";
+}
+
+function renderOps() {
+  document.getElementById("all-ops").innerHTML =
+    state.operations.slice().reverse().map(function (o) {
+      return operationRow(o, state.operations.indexOf(o), true);
+    }).join("") ||
+    "<tr><td colspan='6' class='hint'>Операций пока нет.</td></tr>";
+  document.getElementById("empty-ops").style.display =
+    state.operations.length ? "none" : "block";
+}
+
+function renderBudgets() {
+  var html = "";
+  var hasAny = false;
+  EXPENSE_CATEGORIES.forEach(function (c) {
+    if (state.budgets[c] === undefined) return;
+    hasAny = true;
+    var limit = state.budgets[c];
+    var spent = spentByCategory(c);
+    var percent = Math.round(spent / limit * 100);
+    var cls = percent > 100 ? "danger" : (percent >= 80 ? "warn" : "ok");
+    html += "<p><b>" + c + "</b>: " + formatMoney(spent) + " из " + formatMoney(limit) +
+            " (" + percent + "%)</p>" +
+            "<div class='bar'><div class='" + cls + "' style='width:" +
+            Math.min(percent, 100) + "%'></div></div>";
+  });
+  document.getElementById("budget-list").innerHTML =
+    hasAny ? html : "<div class='hint'>Лимиты не заданы.</div>";
+}
+
+function renderReport() {
+  var total = 0;
+  var byCat = {};
+  state.operations.forEach(function (o) {
+    if (o.type !== "expense") return;
+    byCat[o.category] = (byCat[o.category] || 0) + o.amount;
+    total += o.amount;
+  });
+  var html = "";
+  if (total === 0) {
+    html = "<div class='hint'>Расходов пока нет — отчёт появится после первых записей.</div>";
+  } else {
+    EXPENSE_CATEGORIES.forEach(function (c) {
+      if (!byCat[c]) return;
+      var percent = (byCat[c] / total * 100).toFixed(1).replace(".", ",");
+      html += "<p><b>" + c + "</b>: " + formatMoney(byCat[c]) + " — " + percent + "%</p>" +
+              "<div class='bar'><div class='ok' style='width:" +
+              (byCat[c] / total * 100) + "%'></div></div>";
+    });
+  }
+  document.getElementById("report-list").innerHTML = html;
+}
+
+function renderAll() {
+  renderReview();
+  renderOps();
+  renderBudgets();
+  renderReport();
+}
+
+// ---------- ИНИЦИАЛИЗАЦИЯ ----------
+document.getElementById("op-type").addEventListener("change", fillCategorySelects);
+document.getElementById("op-date").valueAsDate = new Date();
+fillCategorySelects();
+renderAll();
+</script>
+</body>
+</html>
